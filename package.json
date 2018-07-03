@@ -1,0 +1,23 @@
+{
+  "name": "appServer",
+  "version": "1.0.0",
+  "description": "小程序后端服务接口",
+  "main": "app.js",
+  "author": "wanglonghai",
+  "license": "MIT",
+  "dependencies": {
+    "crypto": "^1.0.1",
+    "koa": "^2.5.1",
+    "koa-router": "^7.4.0",
+    "node-fetch": "^2.1.2",
+    "nodemon": "^1.17.5",
+    "request": "^2.87.0",
+    "request-promise": "^4.2.2"
+  },
+  "devDependencies": {
+    "cheerio": "^1.0.0-rc.2",
+    "form-data": "^2.3.2",
+    "koa-bodyparser": "^4.2.1",
+    "koa-multer": "^1.0.2"
+  }
+}
