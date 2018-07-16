@@ -10,25 +10,27 @@ const rp = require('request-promise');
 const multer = require('koa-multer');
 const bodyParser = require('koa-bodyparser');
 const WXBizDataCrypt = require('./WXBizDataCrypt');
+const config = require('./config');
+const getMovie = require('./tools/movie');
+const JingDian = require('./tools/scene');
+const checkMobile = require('./tools/mobile');
+const getWeather = require('./tools/weather');
 
 let access_token = '';
 const app = new Koa();
 const router = new Router();
-const appid = 'wxb3ee82046657a5e8';
-const secret = 'e1eb52be04897887cf865691a52b419b';
-const jscode2session = 'https://api.weixin.qq.com/sns/jscode2session';
 const upload = multer({ dest: './uploads/' });
 
 // openid and session_key
 router.post('/api/openid', async (ctx, next) => {
   const { code } = ctx.request.body;
-  ctx.body = await rp(`${jscode2session}?appid=${appid}&secret=${secret}&js_code=${code}&grant_type=authorization_code`);
+  ctx.body = await rp(`${config.jscode2session}?appid=${config.appid}&secret=${config.secret}&js_code=${code}&grant_type=authorization_code`);
 });
 
 // decrypt
 router.post('/api/decrypt', async (ctx, next) => {
     const { sessionKey, encryptedData, iv } = ctx.request.body;
-    const pc  = new WXBizDataCrypt(appid, sessionKey);
+    const pc  = new WXBizDataCrypt(config.appid, sessionKey);
     ctx.body = pc.decryptData(encryptedData, iv);
 });
 
@@ -61,7 +63,7 @@ router.get('/api/video_list', async (ctx, next) => {
 
 // token
 router.get('/api/token', async (ctx, next) => {
-  const res = await fetch(`https://api.weixin.qq.com/cgi-bin/token?grant_type=client_credential&appid=${appid}&secret=${secret}`).then(res => res.json());
+  const res = await fetch(`https://api.weixin.qq.com/cgi-bin/token?grant_type=client_credential&appid=${config.appid}&secret=${config.secret}`).then(res => res.json());
   access_token = res.access_token;
   console.log(access_token);
   ctx.body = res;
@@ -87,6 +89,41 @@ router.post('/api/wxacode', async (ctx, next) => {
   }  
   ctx.body = `https://wx.html5shanbo.com/images/download/${img_name}`;
 })
+
+// 查询手机号
+router.get('/api/check_mobile', async (ctx, next) => {
+  const { phone } = ctx.query;
+  const res = await checkMobile(phone);
+  ctx.body = res;
+});
+
+//查询天气
+router.get('/api/weather', async (ctx, next) => {
+  const { path, city } = ctx.query;
+  const res = await getWeather(path, city);
+  ctx.body = res;
+});
+
+//查询电影
+router.get('/api/movie', async (ctx, next) => {
+  const { path, city } = ctx.query;
+  const res = await getMovie(path, city);
+  ctx.body = res;
+});
+
+//查询景点列表
+router.get('/api/jingdian/list', async (ctx, next) => {
+  const { surl, pn } = ctx.query;
+  const res = await JingDian.getList(surl, pn);
+  ctx.body = res;
+});
+
+//查询景点
+router.get('/api/jingdian/detail', async (ctx, next) => {
+  const { surl, id } = ctx.query;
+  const res = await JingDian.getDetail(surl, id);
+  ctx.body = res;
+});
 
 router.get('/MP_verify_2r9BMS949svb1tEN.txt', ctx => {
     const text =  fs.readFileSync('./MP_verify_2r9BMS949svb1tEN.txt', { encoding: 'utf8' });
