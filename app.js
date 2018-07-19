@@ -11,10 +11,15 @@ const multer = require('koa-multer');
 const bodyParser = require('koa-bodyparser');
 const WXBizDataCrypt = require('./WXBizDataCrypt');
 const config = require('./config');
-const getMovie = require('./tools/movie');
+const train = require('./tools/train');
+const movie = require('./tools/movie');
+const searchCad = require('./tools/car');
 const JingDian = require('./tools/scene');
+const getAnswer = require('./tools/robot');
 const checkMobile = require('./tools/mobile');
 const getWeather = require('./tools/weather');
+const searchCardID = require('./tools/cardid');
+const searchExpress = require('./tools/express');
 
 let access_token = '';
 const app = new Koa();
@@ -43,7 +48,6 @@ router.get('/api/video_list', async (ctx, next) => {
     const durations = jq('.wa-tiyu-video-small-item-play span');
     const titles = jq('.wa-tiyu-video-small-item-info-font span');
     const fromAndDateTimes = jq('.wa-tiyu-video-small-item-info-msg');
-    console.log(images);
     let list = [];
     const length = images.length;
     for (let i = 0; i < length; i++) {
@@ -57,7 +61,6 @@ router.get('/api/video_list', async (ctx, next) => {
 	}
         list.push(item);
     }
-    console.log(list);
     ctx.body = list; 
 });
 
@@ -65,7 +68,6 @@ router.get('/api/video_list', async (ctx, next) => {
 router.get('/api/token', async (ctx, next) => {
   const res = await fetch(`https://api.weixin.qq.com/cgi-bin/token?grant_type=client_credential&appid=${config.appid}&secret=${config.secret}`).then(res => res.json());
   access_token = res.access_token;
-  console.log(access_token);
   ctx.body = res;
 });
 
@@ -83,7 +85,6 @@ router.post('/api/wxacode', async (ctx, next) => {
   const img_name = `${ md5.update(path).digest('hex') }.jpg`;
   const img_path = `${__dirname}/images/download/${img_name}`;
   if (!fs.existsSync(img_path)) {
-      console.log(img_path);
       const res = await fetch(`https://api.weixin.qq.com/wxa/getwxacode?access_token=${access_token}`, { method: 'POST', body: JSON.stringify({ path }) }).then(res => res.arrayBuffer());
       fs.writeFileSync(img_path, Buffer.from(res), "binary");
   }  
@@ -97,6 +98,13 @@ router.get('/api/check_mobile', async (ctx, next) => {
   ctx.body = res;
 });
 
+// 查询身份证号
+router.get('/api/car_id', async (ctx, next) => {
+  const { code } = ctx.query;
+  const res = await searchCardID(code);
+  ctx.body = res;
+});
+
 //查询天气
 router.get('/api/weather', async (ctx, next) => {
   const { path, city } = ctx.query;
@@ -106,8 +114,15 @@ router.get('/api/weather', async (ctx, next) => {
 
 //查询电影
 router.get('/api/movie', async (ctx, next) => {
-  const { path, city } = ctx.query;
-  const res = await getMovie(path, city);
+  let res = {};
+  const { id, q, start = 0, path, city } = ctx.query;
+  if (id) {
+    res = await movie.getDetail(id);
+  } else if(q) {
+    res = await movie.search(q, start);
+  } else {
+    res = await movie.getMovie(path, city);
+  }
   ctx.body = res;
 });
 
@@ -115,13 +130,42 @@ router.get('/api/movie', async (ctx, next) => {
 router.get('/api/jingdian/list', async (ctx, next) => {
   const { surl, pn } = ctx.query;
   const res = await JingDian.getList(surl, pn);
-  ctx.body = res;
+  const { data = {} } = res;
+  ctx.body = data.scene_list || [];
 });
 
 //查询景点
 router.get('/api/jingdian/detail', async (ctx, next) => {
   const { surl, id } = ctx.query;
   const res = await JingDian.getDetail(surl, id);
+  ctx.body = res;
+});
+
+//车辆信息
+router.get('/api/car', async (ctx, next) => {
+  const { type, id } = ctx.query;
+  const res = await searchCad({ type, id });
+  ctx.body = res;
+});
+
+//查询快递
+router.get('/api/express', async (ctx, next) => {
+  const { code } = ctx.query;
+  const res = await searchExpress(code);
+  ctx.body = res;
+});
+
+//只能问答
+router.get('/api/answer', async (ctx, next) => {
+  const { question } = ctx.query;
+  const res = await getAnswer(question);
+  ctx.body = res;
+});
+
+//火车票
+router.get('/api/train/:name', async (ctx, next) => {
+  const { name } = ctx.params;
+  const res = await train[name](ctx.query);
   ctx.body = res;
 });
 
